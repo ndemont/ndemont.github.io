@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spin Doctor — The cure for your lunch indecision</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:         #070B12;
+            --surface:    #111827;
+            --surface-2:  #1A2539;
+            --border:     rgba(255,255,255,0.07);
+            --border-hi:  rgba(255,255,255,0.14);
+            --text:       #EEF2FF;
+            --muted:      #64748B;
+            --dim:        #94A3B8;
+            --cyan:       #22D3EE;
+            --cyan-glow:  rgba(34,211,238,0.18);
+            --red:        #F87171;
+            --red-glow:   rgba(248,113,113,0.25);
+            --purple:     #818CF8;
+        }
+
+        html { height: 100%; }
+
+        body {
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2.5rem 1rem 4rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+            background-size: 44px 44px;
+            pointer-events: none; z-index: 0;
+        }
+
+        .blob {
+            position: fixed; border-radius: 50%;
+            filter: blur(90px); pointer-events: none; z-index: 0;
+        }
+        .blob-1 {
+            width: 700px; height: 700px;
+            background: radial-gradient(circle, rgba(34,211,238,0.07) 0%, transparent 65%);
+            top: -300px; left: -250px;
+        }
+        .blob-2 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(248,113,113,0.07) 0%, transparent 65%);
+            bottom: -200px; right: -200px;
+        }
+
+        .page {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; align-items: center;
+            width: 100%; max-width: 580px;
+        }
+
+        /* ── Header ─────────────────────────────── */
+        .header {
+            text-align: center; margin-bottom: 2.25rem;
+            animation: fadeDown 0.6s ease both;
+        }
+        .logo-row {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0.75rem; margin-bottom: 0.4rem;
+        }
+        .logo-icon { font-size: 2.8rem; line-height: 1; }
+        .logo-text {
+            font-size: clamp(2.4rem, 8vw, 3.5rem);
+            font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--red) 100%);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .tagline { color: var(--muted); font-size: 0.95rem; font-weight: 500; }
+
+        /* ── Loading ─────────────────────────────── */
+        .loading {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 4rem 2rem; gap: 1rem;
+        }
+        .loading-ring {
+            width: 52px; height: 52px;
+            border: 3px solid var(--surface-2);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+        .loading-text { color: var(--muted); font-size: 0.9rem; font-weight: 500; }
+
+        /* ── App ─────────────────────────────────── */
+        .app { display: none; flex-direction: column; align-items: center; width: 100%; gap: 1.75rem; }
+        .app.visible { display: flex; animation: fadeIn 0.5s ease both; }
+
+        /* ── Location Selector ───────────────────── */
+        .loc-selector {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            justify-content: center; max-width: 520px;
+        }
+        .loc-btn {
+            padding: 0.45rem 0.9rem; border-radius: 9999px;
+            border: 1px solid var(--border);
+            cursor: pointer; font-family: inherit;
+            font-size: 0.8rem; font-weight: 600;
+            color: var(--muted); background: var(--surface);
+            transition: all 0.2s ease; white-space: nowrap;
+        }
+        .loc-btn:hover:not(.active) { color: var(--dim); border-color: var(--border-hi); }
+        .loc-btn.active {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #fff; border-color: transparent;
+            box-shadow: 0 4px 16px var(--cyan-glow);
+        }
+
+        /* ── Wheel ───────────────────────────────── */
+        .wheel-section { display: flex; flex-direction: column; align-items: center; gap: 1.75rem; width: 100%; }
+        .wheel-wrap {
+            position: relative;
+            width: clamp(290px, 82vw, 440px);
+            height: clamp(290px, 82vw, 440px);
+        }
+        .wheel-ring {
+            position: absolute; inset: -10px; border-radius: 50%;
+            border: 1px solid rgba(34,211,238,0.12);
+            box-shadow: 0 0 50px rgba(34,211,238,0.06), inset 0 0 50px rgba(34,211,238,0.03);
+            pointer-events: none;
+        }
+        .pointer {
+            position: absolute; top: -18px; left: 50%;
+            transform: translateX(-50%); z-index: 10;
+        }
+        .pointer-arrow {
+            width: 0; height: 0;
+            border-left: 14px solid transparent; border-right: 14px solid transparent;
+            border-top: 28px solid var(--red);
+            filter: drop-shadow(0 0 10px rgba(248,113,113,0.9));
+        }
+        #wheelSvg {
+            width: 100%; height: 100%;
+            transform-origin: center; transform-box: fill-box;
+            filter: drop-shadow(0 20px 60px rgba(0,0,0,0.65));
+            will-change: transform;
+        }
+
+        /* Wheel inner loading */
+        .wheel-loader {
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
+        }
+        .wheel-loader-ring {
+            width: 40px; height: 40px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        .wheel-wrap.fetching .wheel-loader-ring { display: block; }
+        .wheel-wrap.fetching #wheelSvg { opacity: 0.3; }
+
+        /* ── Spin Button ─────────────────────────── */
+        .spin-wrap { position: relative; display: inline-block; }
+        .spin-glow {
+            position: absolute; inset: -10px; border-radius: 9999px;
+            background: linear-gradient(135deg, var(--red), #EC4899);
+            filter: blur(16px); opacity: 0; transition: opacity 0.3s ease; pointer-events: none;
+        }
+        .spin-wrap:hover .spin-glow { opacity: 0.55; }
+        .spin-btn {
+            position: relative; padding: 1rem 3.25rem; border-radius: 9999px;
+            border: none; cursor: pointer; font-family: inherit;
+            font-size: 1rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+            color: #fff; background: linear-gradient(135deg, #F87171, #EC4899);
+            box-shadow: 0 8px 32px var(--red-glow);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .spin-btn::before {
+            content: ''; position: absolute; inset: 1px; border-radius: 9999px;
+            background: linear-gradient(160deg, rgba(255,255,255,0.18) 0%, transparent 55%);
+            pointer-events: none;
+        }
+        .spin-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 14px 40px rgba(248,113,113,0.5); }
+        .spin-btn:active { transform: scale(0.97); }
+        .spin-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* ── Result Modal ────────────────────────── */
+        .modal-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(7,11,18,0.82);
+            backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+            z-index: 200; display: flex; align-items: center; justify-content: center;
+            padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.visible { opacity: 1; pointer-events: auto; }
+
+        .result-card {
+            background: var(--surface); border: 1px solid var(--border-hi);
+            border-radius: 1.75rem; padding: 2rem 2.25rem;
+            width: 100%; max-width: 400px; text-align: center; position: relative;
+            transform: translateY(24px) scale(0.95);
+            transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .modal-backdrop.visible .result-card { transform: translateY(0) scale(1); }
+
+        .modal-close {
+            position: absolute; top: 1rem; right: 1rem;
+            width: 28px; height: 28px; border-radius: 50%;
+            border: 1px solid var(--border-hi); background: var(--surface-2);
+            color: var(--muted); font-size: 0.9rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease;
+        }
+        .modal-close:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+        .rx-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+        .rx-badge {
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em;
+            color: var(--cyan); border: 1px solid rgba(34,211,238,0.35);
+            background: var(--cyan-glow); border-radius: 0.3rem; padding: 0.2rem 0.55rem;
+        }
+        .rx-label { color: var(--muted); font-size: 0.82rem; }
+
+        .result-name {
+            font-size: clamp(1.4rem, 5vw, 1.9rem); font-weight: 700;
+            letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #F87171, #FBBF24);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .result-addr {
+            display: flex; align-items: center; justify-content: center;
+            gap: 0.375rem; color: var(--muted); font-size: 0.82rem; margin-bottom: 1.25rem;
+        }
+        .maps-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.625rem 1.5rem; border-radius: 9999px;
+            background: var(--surface-2); border: 1px solid var(--border-hi);
+            color: var(--text); text-decoration: none; font-family: inherit;
+            font-size: 0.85rem; font-weight: 600; transition: all 0.2s ease;
+        }
+        .maps-btn:hover {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #fff; border-color: transparent;
+            box-shadow: 0 4px 20px var(--cyan-glow);
+        }
+
+        /* ── Footer ──────────────────────────────── */
+        .footer { margin-top: 1rem; text-align: center; color: var(--muted); font-size: 0.78rem; line-height: 1.9; }
+        .footer-main { color: var(--dim); font-weight: 600; }
+        .footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+        /* ── Confetti ─────────────────────────────── */
+        #confettiCanvas { position: fixed; inset: 0; pointer-events: none; z-index: 999; }
+
+        /* ── Keyframes ───────────────────────────── */
+        @keyframes fadeIn   { from { opacity: 0; }                          to { opacity: 1; } }
+        @keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin     { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <canvas id="confettiCanvas"></canvas>
+
+    <div class="page">
+        <header class="header">
+            <div class="logo-row">
+                <span class="logo-icon">🩺</span>
+                <h1 class="logo-text">Spin Doctor</h1>
+            </div>
+            <p class="tagline">The cure for your lunch indecision</p>
+        </header>
+
+        <div class="loading" id="loading">
+            <div class="loading-ring"></div>
+            <p class="loading-text">Locating your office…</p>
+        </div>
+
+        <main class="app" id="app">
+
+            <div class="loc-selector" id="locSelector">
+                <button class="loc-btn" id="btn-k11"       onclick="selectLocation('k11')">🇩🇪 K11 Berlin</button>
+                <button class="loc-btn" id="btn-m51"       onclick="selectLocation('m51')">🇩🇪 M51 Berlin</button>
+                <button class="loc-btn" id="btn-levallois" onclick="selectLocation('levallois')">🇫🇷 Levallois</button>
+                <button class="loc-btn" id="btn-nantes"    onclick="selectLocation('nantes')">🇫🇷 Nantes</button>
+                <button class="loc-btn" id="btn-niort"     onclick="selectLocation('niort')">🇫🇷 Niort</button>
+                <button class="loc-btn" id="btn-milan"     onclick="selectLocation('milan')">🇮🇹 Milan</button>
+                <button class="loc-btn" id="btn-amsterdam" onclick="selectLocation('amsterdam')">🇳🇱 Amsterdam</button>
+            </div>
+
+            <div class="wheel-section">
+                <div class="wheel-wrap" id="wheelWrap">
+                    <div class="wheel-ring"></div>
+                    <div class="pointer"><div class="pointer-arrow"></div></div>
+                    <div class="wheel-loader"><div class="wheel-loader-ring"></div></div>
+                    <svg id="wheelSvg" viewBox="-200 -200 400 400">
+                        <g id="wheelSegments"></g>
+                        <circle cx="0" cy="0" r="193" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="5"/>
+                        <circle cx="0" cy="0" r="36" fill="#111827" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
+                        <text x="0" y="1" text-anchor="middle" dominant-baseline="central" font-size="21" font-family="system-ui">🎡</text>
+                    </svg>
+                </div>
+
+                <div class="spin-wrap">
+                    <button class="spin-btn" id="spinBtn" onclick="spinWheel()">🎯 &nbsp;Spin the Wheel</button>
+                    <div class="spin-glow"></div>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Result modal -->
+        <div class="modal-backdrop" id="resultModal" onclick="handleBackdropClick(event)">
+            <div class="result-card">
+                <button class="modal-close" onclick="hideResult()">✕</button>
+                <div class="rx-row">
+                    <span class="rx-badge">℞ PRESCRIPTION</span>
+                    <span class="rx-label">The doctor prescribes…</span>
+                </div>
+                <div class="result-name" id="resultName">—</div>
+                <div class="result-addr"><span>📍</span><span id="resultAddr"></span></div>
+                <a href="#" class="maps-btn" id="mapsLink" target="_blank" rel="noopener noreferrer">
+                    🗺️ &nbsp;Open in Google Maps
+                </a>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p class="footer-main">One spin. Zero regrets. 🩺</p>
+            <p>Berlin · Levallois · Nantes · Niort · Milan · Amsterdam</p>
+            <p>Restaurants from <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a></p>
+        </footer>
+    </div>
+
+    <script>
+    // ── Offices ───────────────────────────────────────────────────────────────
+    // lat/lng = office location used as center for OSM restaurant search
+    const LOCATIONS = {
+        k11:       { name:'K11 – Berlin',    city:'Berlin',           lat:52.5033, lng:13.3307, restaurants:null },
+        m51:       { name:'M51 – Berlin',    city:'Berlin',           lat:52.4980, lng:13.3913, restaurants:null },
+        levallois: { name:'Levallois',       city:'Levallois-Perret', lat:48.8939, lng:2.2870,  restaurants:null },
+        nantes:    { name:'Nantes',          city:'Nantes',           lat:47.2173, lng:-1.5534, restaurants:null },
+        niort:     { name:'Niort',           city:'Niort',            lat:46.3243, lng:-0.4591, restaurants:null },
+        milan:     { name:'Milan',           city:'Milan',            lat:45.4654, lng:9.1859,  restaurants:null },
+        amsterdam: { name:'Amsterdam',       city:'Amsterdam',        lat:52.3676, lng:4.9041,  restaurants:null }
+    };
+
+    const FALLBACKS = {
+        k11: [
+            { displayName:'Café am Ku\'damm',   address:'Kurfürstendamm, 10719 Berlin',  lat:52.5038, lng:13.3318 },
+            { displayName:'Sushi Garden',        address:'Kurfürstendamm, 10719 Berlin',  lat:52.5030, lng:13.3295 },
+            { displayName:'Pasta e Basta',       address:'Kurfürstendamm, 10719 Berlin',  lat:52.5025, lng:13.3310 },
+            { displayName:'The Burger Spot',     address:'Kurfürstendamm, 10719 Berlin',  lat:52.5040, lng:13.3325 },
+            { displayName:'Pho Saigon',          address:'Kurfürstendamm, 10719 Berlin',  lat:52.5028, lng:13.3300 },
+            { displayName:'Tapas & Vinos',       address:'Kurfürstendamm, 10719 Berlin',  lat:52.5035, lng:13.3285 },
+            { displayName:'Salad Garden',        address:'Kurfürstendamm, 10719 Berlin',  lat:52.5022, lng:13.3315 },
+            { displayName:'Grill House',         address:'Kurfürstendamm, 10719 Berlin',  lat:52.5042, lng:13.3295 }
+        ],
+        m51: [
+            { displayName:'Kreuzberg Kitchen',   address:'Mehringdamm, 10961 Berlin',     lat:52.4985, lng:13.3920 },
+            { displayName:'Ramen Ya',            address:'Mehringdamm, 10961 Berlin',     lat:52.4975, lng:13.3905 },
+            { displayName:'Falafel King',        address:'Mehringdamm, 10961 Berlin',     lat:52.4990, lng:13.3900 },
+            { displayName:'Pizza Pazza',         address:'Mehringdamm, 10961 Berlin',     lat:52.4978, lng:13.3925 },
+            { displayName:'Curry & Co',          address:'Mehringdamm, 10961 Berlin',     lat:52.4982, lng:13.3910 },
+            { displayName:'Dim Sum House',       address:'Mehringdamm, 10961 Berlin',     lat:52.4970, lng:13.3895 },
+            { displayName:'The Wrap Station',    address:'Mehringdamm, 10961 Berlin',     lat:52.4988, lng:13.3930 },
+            { displayName:'Steakhouse 51',       address:'Mehringdamm, 10961 Berlin',     lat:52.4972, lng:13.3918 }
+        ],
+        levallois: [
+            { displayName:'Le Bistrot du Coin',  address:'Rue du Président Wilson, 92300 Levallois-Perret', lat:48.8942, lng:2.2876 },
+            { displayName:'Brasserie de la Paix',address:'Rue Louis Blanc, 92300 Levallois-Perret',         lat:48.8935, lng:2.2865 },
+            { displayName:'Sushi Avenue',        address:'Rue de Villiers, 92300 Levallois-Perret',          lat:48.8928, lng:2.2882 },
+            { displayName:'La Piazza',           address:'Boulevard de la Mission, 92300 Levallois-Perret', lat:48.8948, lng:2.2858 },
+            { displayName:'Wok & Roll',          address:'Rue Voltaire, 92300 Levallois-Perret',             lat:48.8932, lng:2.2890 },
+            { displayName:'O\'Falafel',          address:'Rue Rivay, 92300 Levallois-Perret',                lat:48.8922, lng:2.2870 },
+            { displayName:'Burger Republic',     address:'Rue Chaptal, 92300 Levallois-Perret',              lat:48.8950, lng:2.2840 },
+            { displayName:'Le Sablé',            address:'Rue du Président Wilson, 92300 Levallois-Perret', lat:48.8938, lng:2.2895 }
+        ],
+        nantes: [
+            { displayName:'La Cigale',           address:'Place Graslin, 44000 Nantes',         lat:47.2162, lng:-1.5587 },
+            { displayName:'Crêperie Bretonne',   address:'Rue de la Bâclerie, 44000 Nantes',    lat:47.2175, lng:-1.5545 },
+            { displayName:'Le Bouchon',          address:'Rue Bossuet, 44000 Nantes',            lat:47.2180, lng:-1.5520 },
+            { displayName:'Sushi Nantes',        address:'Rue Crébillon, 44000 Nantes',          lat:47.2170, lng:-1.5560 },
+            { displayName:'Burger Factory',      address:'Rue Scribe, 44000 Nantes',             lat:47.2185, lng:-1.5500 },
+            { displayName:'L\'Ïle de Nantes',    address:'Boulevard des Martyrs, 44200 Nantes',  lat:47.2100, lng:-1.5580 },
+            { displayName:'Tajine & Saveurs',    address:'Rue du Calvaire, 44000 Nantes',        lat:47.2165, lng:-1.5570 },
+            { displayName:'Wok en Folie',        address:'Allée Duquesne, 44000 Nantes',         lat:47.2190, lng:-1.5510 }
+        ],
+        niort: [
+            { displayName:'Le Donjon',           address:'Rue du Pont, 79000 Niort',             lat:46.3240, lng:-0.4595 },
+            { displayName:'Brasserie de la Sèvre',address:'Quai Maurice Métayer, 79000 Niort',   lat:46.3250, lng:-0.4580 },
+            { displayName:'Pizza Romaine',       address:'Rue Victor Hugo, 79000 Niort',         lat:46.3235, lng:-0.4610 },
+            { displayName:'Le Moulin Fumant',    address:'Avenue de Paris, 79000 Niort',         lat:46.3255, lng:-0.4570 },
+            { displayName:'Sushi Zen',           address:'Rue Saint-Jean, 79000 Niort',          lat:46.3228, lng:-0.4600 },
+            { displayName:'Café de la Poste',    address:'Place de la Poste, 79000 Niort',       lat:46.3245, lng:-0.4605 },
+            { displayName:'L\'Ardoise',          address:'Rue du Temple, 79000 Niort',           lat:46.3260, lng:-0.4588 },
+            { displayName:'Burger & Co',         address:'Rue Ricard, 79000 Niort',              lat:46.3232, lng:-0.4582 }
+        ],
+        milan: [
+            { displayName:'Trattoria da Pino',   address:'Via Solferino 23, 20121 Milan',        lat:45.4740, lng:9.1870 },
+            { displayName:'Paninoteca Central',  address:'Via Brera 12, 20121 Milan',            lat:45.4730, lng:9.1860 },
+            { displayName:'Sushi Milano',        address:'Corso Garibaldi 18, 20121 Milan',      lat:45.4760, lng:9.1880 },
+            { displayName:'Pizzeria Napoli',     address:'Via Moscova 7, 20121 Milan',           lat:45.4750, lng:9.1850 },
+            { displayName:'Risotteria Milan',    address:'Via della Moscova 40, 20121 Milan',    lat:45.4755, lng:9.1900 },
+            { displayName:'Il Panino Giusto',    address:'Via Solferino 19, 20121 Milan',        lat:45.4735, lng:9.1875 },
+            { displayName:'La Focacceria',       address:'Via Pontaccio 1, 20121 Milan',         lat:45.4745, lng:9.1840 },
+            { displayName:'Kebab Palace',        address:'Corso Garibaldi 55, 20121 Milan',      lat:45.4765, lng:9.1895 }
+        ],
+        amsterdam: [
+            { displayName:'De Kas',              address:'Kamerlingh Onneslaan 3, 1097 Amsterdam', lat:52.3510, lng:4.9400 },
+            { displayName:'Café de Jaren',       address:'Nieuwe Doelenstraat 20, 1012 Amsterdam', lat:52.3672, lng:4.8993 },
+            { displayName:'Broodje Bert',        address:'Leidseplein 4, 1017 Amsterdam',           lat:52.3642, lng:4.8828 },
+            { displayName:'Sushi Jiro',          address:'Keizersgracht 500, 1017 Amsterdam',       lat:52.3633, lng:4.8866 },
+            { displayName:'The Burger Factory',  address:'Utrechtsestraat 33, 1017 Amsterdam',      lat:52.3605, lng:4.8956 },
+            { displayName:'Thai Bird',           address:'Korte Leidsedwarsstraat 1017 Amsterdam',  lat:52.3645, lng:4.8831 },
+            { displayName:'Balthazar\'s Keuken', address:'Elandsgracht 108, 1016 Amsterdam',        lat:52.3693, lng:4.8808 },
+            { displayName:'Falafel Mashawi',     address:'Albert Cuypstraat 87, 1072 Amsterdam',    lat:52.3561, lng:4.8946 }
+        ]
+    };
+
+    const COLORS = [
+        '#FF6B6B','#4ECDC4','#45B7D1','#FBBF24',
+        '#A78BFA','#34D399','#F97316','#60A5FA',
+        '#F472B6','#10B981','#818CF8','#FB923C'
+    ];
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let currentLocation = 'k11';
+    let isSpinning      = false;
+    let currentRotation = 0;
+    let fetchingLoc     = null;  // prevents duplicate fetches
+
+    // ── Fetch (lazy, per-location) ────────────────────────────────────────────
+    async function ensureRestaurants(key) {
+        const loc = LOCATIONS[key];
+        if (loc.restaurants !== null) return;
+        if (fetchingLoc === key) return;
+        fetchingLoc = key;
+
+        document.getElementById('wheelWrap').classList.add('fetching');
+
+        const { lat, lng, city } = loc;
+        const d = 0.005; // ~550 m radius
+        // Nodes-only query — simpler, faster, and avoids the `out center` issue with ways
+        const query = `[out:json][timeout:12];node["amenity"="restaurant"](${lat-d},${lng-d},${lat+d},${lng+d});out 20;`;
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 12000);
+
+        try {
+            const res = await fetch('https://overpass-api.de/api/interpreter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query),
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+
+            const data = await res.json();
+            const list = data.elements
+                .filter(el => el.tags && el.tags.name && el.lat && el.lon)
+                .map(el => {
+                    const street = el.tags['addr:full'] ||
+                        (el.tags['addr:street']
+                            ? `${el.tags['addr:street']} ${el.tags['addr:housenumber'] || ''}`.trim()
+                            : '');
+                    const address = street ? `${street}, ${city}` : city;
+                    return { displayName: el.tags.name, address, lat: el.lat, lng: el.lon };
+                })
+                .slice(0, 12);
+
+            loc.restaurants = list.length >= 3 ? list : FALLBACKS[key];
+        } catch {
+            clearTimeout(timer);
+            loc.restaurants = FALLBACKS[key];
+        }
+
+        fetchingLoc = null;
+        document.getElementById('wheelWrap').classList.remove('fetching');
+    }
+
+    // ── SVG helpers ──────────────────────────────────────────────────────────
+    function svgEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
+
+    function polarToXY(deg, r) {
+        const rad = (deg - 90) * Math.PI / 180;
+        return { x: r * Math.cos(rad), y: r * Math.sin(rad) };
+    }
+
+    function trunc(str, max) { return str.length > max ? str.slice(0, max - 1) + '…' : str; }
+
+    // ── Draw Wheel ───────────────────────────────────────────────────────────
+    function drawWheel() {
+        const group       = document.getElementById('wheelSegments');
+        group.innerHTML   = '';
+        const restaurants = LOCATIONS[currentLocation].restaurants || [];
+        if (!restaurants.length) return;
+
+        const n        = restaurants.length;
+        const segAngle = 360 / n;
+        const R        = 192;
+        const textR    = R * 0.63;
+        const maxChars = n <= 6 ? 16 : n <= 9 ? 13 : 10;
+        const fontSize = n <= 6 ? 13  : n <= 9 ? 11  : 9.5;
+
+        restaurants.forEach((r, i) => {
+            const startAngle = i * segAngle;
+            const midAngle   = startAngle + segAngle / 2;
+            const s = polarToXY(startAngle, R);
+            const e = polarToXY((i + 1) * segAngle, R);
+            const largeArc = segAngle > 180 ? 1 : 0;
+
+            const path = svgEl('path');
+            path.setAttribute('d', `M 0,0 L ${s.x.toFixed(2)},${s.y.toFixed(2)} A ${R},${R} 0 ${largeArc} 1 ${e.x.toFixed(2)},${e.y.toFixed(2)} Z`);
+            path.setAttribute('fill', COLORS[i % COLORS.length]);
+            path.setAttribute('stroke', 'rgba(0,0,0,0.28)');
+            path.setAttribute('stroke-width', '1.5');
+            group.appendChild(path);
+
+            // Radial text: flip left-half segments so they stay legible
+            const isLeftHalf    = midAngle > 180 && midAngle < 360;
+            const textRotation  = isLeftHalf ? midAngle + 90 : midAngle - 90;
+            const anchor        = isLeftHalf ? 'end' : 'start';
+            const tp            = polarToXY(midAngle, textR - 10);
+
+            const text = svgEl('text');
+            text.setAttribute('x', tp.x.toFixed(2));
+            text.setAttribute('y', tp.y.toFixed(2));
+            text.setAttribute('text-anchor', anchor);
+            text.setAttribute('dominant-baseline', 'central');
+            text.setAttribute('fill', 'rgba(255,255,255,0.95)');
+            text.setAttribute('font-family', "'Space Grotesk', system-ui, sans-serif");
+            text.setAttribute('font-size', String(fontSize));
+            text.setAttribute('font-weight', '600');
+            text.setAttribute('transform', `rotate(${textRotation}, ${tp.x.toFixed(2)}, ${tp.y.toFixed(2)})`);
+            text.textContent = trunc(r.displayName, maxChars);
+            group.appendChild(text);
+        });
+    }
+
+    // ── Location selection (async — fetches lazily) ──────────────────────────
+    async function selectLocation(key) {
+        currentLocation = key;
+
+        // Update button highlights
+        Object.keys(LOCATIONS).forEach(k => {
+            document.getElementById(`btn-${k}`).classList.toggle('active', k === key);
+        });
+
+        hideResult();
+        await ensureRestaurants(key);
+        drawWheel();
+    }
+
+    function hideResult() { document.getElementById('resultModal').classList.remove('visible'); }
+    function handleBackdropClick(e) { if (e.target.id === 'resultModal') hideResult(); }
+
+    // ── Spin ─────────────────────────────────────────────────────────────────
+    function spinWheel() {
+        if (isSpinning) return;
+        const restaurants = LOCATIONS[currentLocation].restaurants;
+        if (!restaurants || !restaurants.length) return;
+
+        isSpinning = true;
+        document.getElementById('spinBtn').disabled = true;
+        hideResult();
+
+        const n        = restaurants.length;
+        const segAngle = 360 / n;
+        const targetIdx = Math.floor(Math.random() * n);
+
+        // finalRotation brings targetIdx's midpoint under the pointer (12 o'clock)
+        const midAngle   = targetIdx * segAngle + segAngle / 2;
+        const target     = (360 - midAngle + 360) % 360;
+        const curAngle   = ((currentRotation % 360) + 360) % 360;
+        const delta      = ((target - curAngle) + 360) % 360;
+        const extraSpins = (Math.floor(Math.random() * 4) + 5) * 360;
+        const finalRot   = currentRotation + delta + extraSpins;
+
+        const duration   = 4200 + Math.random() * 800;
+        const startTime  = performance.now();
+        const startRot   = currentRotation;
+
+        function tick(now) {
+            const t      = Math.min((now - startTime) / duration, 1);
+            const eased  = 1 - Math.pow(1 - t, 4);
+            document.getElementById('wheelSvg').style.transform = `rotate(${startRot + (finalRot - startRot) * eased}deg)`;
+
+            if (t < 1) {
+                requestAnimationFrame(tick);
+            } else {
+                currentRotation = finalRot;
+                isSpinning = false;
+                document.getElementById('spinBtn').disabled = false;
+                showResult(targetIdx);
+            }
+        }
+        requestAnimationFrame(tick);
+    }
+
+    // ── Result ───────────────────────────────────────────────────────────────
+    function showResult(idx) {
+        const r = LOCATIONS[currentLocation].restaurants[idx];
+
+        // /place/NAME/@lat,lng,18z — the format Google Maps itself uses for sharing.
+        // Centres on the exact OSM coordinates and matches the business card if it
+        // exists in Google's database. Falls back gracefully to a map centred on the pin.
+        const mapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(r.displayName)}/@${r.lat},${r.lng},18z`;
+
+        document.getElementById('resultName').textContent = r.displayName;
+        document.getElementById('resultAddr').textContent = r.address;
+        document.getElementById('mapsLink').href          = mapsUrl;
+        document.getElementById('resultModal').classList.add('visible');
+        launchConfetti();
+    }
+
+    // ── Confetti ─────────────────────────────────────────────────────────────
+    const cCanvas = document.getElementById('confettiCanvas');
+    const cCtx    = cCanvas.getContext('2d');
+    let   cParts  = [];
+    let   cRAF    = null;
+
+    function resizeC() { cCanvas.width = window.innerWidth; cCanvas.height = window.innerHeight; }
+    window.addEventListener('resize', resizeC);
+    resizeC();
+
+    function launchConfetti() {
+        cParts = [];
+        if (cRAF) cancelAnimationFrame(cRAF);
+
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight * 0.35;
+
+        for (let i = 0; i < 140; i++) {
+            const fromLeft = i < 70;
+            const ox    = fromLeft ? cx - 80 : cx + 80;
+            const angle = fromLeft
+                ? (Math.random() * 80 - 140) * Math.PI / 180
+                : (Math.random() * 80 - 40)  * Math.PI / 180;
+            const speed = Math.random() * 10 + 5;
+            cParts.push({
+                x: ox, y: cy,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                w: Math.random() * 9 + 4, h: Math.random() * 5 + 3,
+                rot: Math.random() * 360, rotV: (Math.random() - 0.5) * 14,
+                color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                opacity: 1, gravity: 0.28 + Math.random() * 0.12
+            });
+        }
+        animateC();
+    }
+
+    function animateC() {
+        cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+        cParts = cParts.filter(p => p.opacity > 0.01);
+        cParts.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.vx *= 0.993; p.rot += p.rotV;
+            if (p.y > cCanvas.height * 0.7) p.opacity -= 0.025;
+            cCtx.save();
+            cCtx.globalAlpha = Math.max(0, p.opacity);
+            cCtx.translate(p.x, p.y); cCtx.rotate(p.rot * Math.PI / 180);
+            cCtx.fillStyle = p.color;
+            cCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            cCtx.restore();
+        });
+        if (cParts.length > 0) { cRAF = requestAnimationFrame(animateC); }
+        else { cCtx.clearRect(0, 0, cCanvas.width, cCanvas.height); }
+    }
+
+    // ── Geolocation → nearest office ─────────────────────────────────────────
+    function nearestOffice(lat, lng) {
+        let nearest = 'k11', minDist = Infinity;
+        for (const [key, loc] of Object.entries(LOCATIONS)) {
+            const dist = Math.hypot(loc.lat - lat, loc.lng - lng);
+            if (dist < minDist) { minDist = dist; nearest = key; }
+        }
+        return nearest;
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    async function init() {
+        // Show app shell first (location buttons visible immediately)
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('app').classList.add('visible');
+
+        // Try geolocation with a 4 s timeout, fall back to k11
+        let startKey = 'k11';
+        try {
+            startKey = await new Promise((resolve) => {
+                if (!navigator.geolocation) { resolve('k11'); return; }
+                const timer = setTimeout(() => resolve('k11'), 4000);
+                navigator.geolocation.getCurrentPosition(
+                    ({ coords }) => { clearTimeout(timer); resolve(nearestOffice(coords.latitude, coords.longitude)); },
+                    ()          => { clearTimeout(timer); resolve('k11'); },
+                    { timeout: 4000, maximumAge: 300000 }
+                );
+            });
+        } catch { /* keep k11 */ }
+
+        await selectLocation(startKey);
+    }
+
+    window.addEventListener('load', init);
+    </script>
+</body>
+</html>
