@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spin Doctor — Your daily lunch prescription</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">
+      <span class="logo-icon">💊</span>
+      <span class="logo-text">Spin <strong>Doctor</strong></span>
+    </div>
+    <p class="tagline">
+      Tired of the same "Where do we eat?" debate every day at noon?<br />
+      Let Spin Doctor <em>diagnose your hunger</em> and prescribe the perfect lunch spot — no appointment needed.
+    </p>
+  </header>
+
+  <main>
+    <section class="office-selector">
+      <label for="office-select" class="selector-label">
+        <span class="pill">Step 1</span> Select your Doctolib office
+      </label>
+      <div class="select-wrapper">
+        <select id="office-select">
+          <option value="" disabled selected>— Choose your office —</option>
+          <option value="paris">🇫🇷 Paris — Levallois-Perret (HQ)</option>
+          <option value="berlin">🇩🇪 Berlin — Mitte</option>
+          <option value="rome">🇮🇹 Rome — Prati</option>
+          <option value="amsterdam">🇳🇱 Amsterdam — Grachtengordel</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="wheel-section">
+      <div class="wheel-container">
+        <div class="wheel-pointer" id="wheel-pointer">▼</div>
+        <canvas id="wheel-canvas" width="500" height="500"></canvas>
+        <div class="wheel-center">🩺</div>
+      </div>
+
+      <div class="spin-area">
+        <p class="step-label"><span class="pill">Step 2</span> Give the wheel a spin</p>
+        <button id="spin-btn" class="spin-btn" disabled>
+          <span class="btn-icon">🎰</span> Spin!
+        </button>
+        <p class="disclaimer" id="disclaimer">Choose an office above to unlock the wheel.</p>
+      </div>
+    </section>
+
+    <section class="result-section" id="result-section" hidden>
+      <div class="prescription">
+        <div class="rx-header">
+          <span class="rx-symbol">℞</span>
+          <span class="rx-title">Doctor's Orders</span>
+        </div>
+        <div class="rx-body">
+          <p class="rx-label">Today's lunch prescription:</p>
+          <p class="rx-restaurant" id="result-name"></p>
+          <p class="rx-type" id="result-type"></p>
+          <p class="rx-address" id="result-address"></p>
+        </div>
+        <div class="rx-footer">
+          <em>Take at noon, repeat as needed. 🍽️</em>
+        </div>
+      </div>
+      <button class="spin-again-btn" id="spin-again-btn">Spin again</button>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Made with ❤️ &amp; 🩺 at Doctolib · Spin Doctor is not responsible for post-lunch food comas.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

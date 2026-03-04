@@ -1,0 +1,370 @@
+/* =====================================================================
+   Spin Doctor — stylesheet
+   Color palette inspired by Doctolib's teal/blue brand
+   ===================================================================== */
+
+/* -- Reset & Base --------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --teal:        #00c7b1;
+  --teal-dark:   #00a396;
+  --blue-dark:   #107180;
+  --bg:          #f4fbfc;
+  --white:       #ffffff;
+  --text:        #1a2e35;
+  --text-light:  #5a7a84;
+  --shadow:      0 4px 24px rgba(0,115,128,.15);
+  --radius:      16px;
+}
+
+html { font-size: 16px; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* -- Header --------------------------------------------------------- */
+.site-header {
+  width: 100%;
+  background: linear-gradient(135deg, var(--blue-dark) 0%, var(--teal) 100%);
+  color: var(--white);
+  text-align: center;
+  padding: 2.5rem 1rem 2rem;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+
+.logo-icon { font-size: 2.4rem; }
+
+.logo-text {
+  font-size: 2.4rem;
+  font-weight: 300;
+  letter-spacing: -.5px;
+}
+
+.logo-text strong {
+  font-weight: 800;
+}
+
+.tagline {
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: .92;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* -- Main ----------------------------------------------------------- */
+main {
+  width: 100%;
+  max-width: 760px;
+  padding: 2rem 1rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* -- Pill badge ----------------------------------------------------- */
+.pill {
+  display: inline-block;
+  background: var(--teal);
+  color: var(--white);
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  padding: .2rem .55rem;
+  border-radius: 99px;
+  margin-right: .4rem;
+}
+
+/* -- Office selector ------------------------------------------------ */
+.office-selector {
+  width: 100%;
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 1.5rem 2rem;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.selector-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.select-wrapper::after {
+  content: '▾';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--teal-dark);
+  font-size: 1.1rem;
+}
+
+#office-select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: .75rem 2.5rem .75rem 1rem;
+  border: 2px solid #d0eaf0;
+  border-radius: 10px;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--white);
+  cursor: pointer;
+  outline: none;
+  transition: border-color .2s;
+}
+
+#office-select:focus {
+  border-color: var(--teal);
+}
+
+/* -- Wheel section -------------------------------------------------- */
+.wheel-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.wheel-container {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  filter: drop-shadow(0 8px 32px rgba(0,115,128,.25));
+}
+
+/* On larger screens, make the wheel bigger */
+@media (min-width: 500px) {
+  .wheel-container {
+    width: 440px;
+    height: 440px;
+  }
+  #wheel-canvas {
+    width: 440px !important;
+    height: 440px !important;
+  }
+}
+
+#wheel-canvas {
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+}
+
+.wheel-pointer {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2rem;
+  color: var(--blue-dark);
+  z-index: 10;
+  text-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+
+.wheel-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 52px;
+  height: 52px;
+  background: var(--white);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2);
+  z-index: 10;
+}
+
+/* -- Spin button ---------------------------------------------------- */
+.spin-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+}
+
+.step-label {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.spin-btn {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .9rem 2.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--teal) 0%, var(--blue-dark) 100%);
+  border: none;
+  border-radius: 99px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,115,128,.35);
+  transition: transform .15s, box-shadow .15s, opacity .2s;
+}
+
+.spin-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,115,128,.45);
+}
+
+.spin-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.spin-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.btn-icon { font-size: 1.3rem; }
+
+.disclaimer {
+  font-size: .85rem;
+  color: var(--text-light);
+}
+
+/* -- Result / Prescription ----------------------------------------- */
+.result-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  animation: fadeSlideUp .4s ease both;
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.prescription {
+  width: 100%;
+  background: var(--white);
+  border: 3px solid var(--teal);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.rx-header {
+  background: var(--teal);
+  color: var(--white);
+  padding: .8rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+}
+
+.rx-symbol {
+  font-size: 1.6rem;
+  font-weight: 900;
+  font-style: italic;
+}
+
+.rx-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+.rx-body {
+  padding: 1.5rem 2rem;
+}
+
+.rx-label {
+  font-size: .85rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: .5rem;
+}
+
+.rx-restaurant {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--blue-dark);
+  line-height: 1.2;
+}
+
+.rx-type {
+  font-size: 1rem;
+  color: var(--teal-dark);
+  font-weight: 600;
+  margin-top: .3rem;
+}
+
+.rx-address {
+  font-size: .9rem;
+  color: var(--text-light);
+  margin-top: .4rem;
+}
+
+.rx-footer {
+  padding: .7rem 2rem;
+  background: #edf9f8;
+  font-size: .85rem;
+  color: var(--text-light);
+  border-top: 1px solid #c8ecea;
+}
+
+.spin-again-btn {
+  padding: .65rem 2rem;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--teal-dark);
+  background: var(--white);
+  border: 2px solid var(--teal);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.spin-again-btn:hover {
+  background: var(--teal);
+  color: var(--white);
+}
+
+/* -- Footer --------------------------------------------------------- */
+.site-footer {
+  margin-top: auto;
+  padding: 1.25rem 1rem;
+  font-size: .8rem;
+  color: var(--text-light);
+  text-align: center;
+  border-top: 1px solid #d0eaf0;
+  width: 100%;
+}
