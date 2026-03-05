@@ -804,7 +804,17 @@
     let isSpinning      = false;
     let currentRotation = 0;
     let fetchingLoc     = null;  // prevents duplicate fetches
-    let lastSegmentIndex = -1;   // track last segment for tick sounds
+    let lastBoundaryCrossed = -1; // track last boundary crossed for tick sounds
+
+    // ── Audio Context (shared, reused for all sounds) ────────────────────────
+    let audioContext = null;
+
+    function getAudioContext() {
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return audioContext;
+    }
 
     // ── Audio - Pinball Wheel Ticks ────────────────────────────────────────────
     const SOUND_PRESETS = {
@@ -812,7 +822,7 @@
             name: '🎰 Classic Pinball',
             icon: '🔊',
             play: () => {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = getAudioContext();
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -830,7 +840,7 @@
             name: '⚙️ Mechanical Click',
             icon: '🔊',
             play: () => {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = getAudioContext();
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -847,7 +857,7 @@
             name: '🔔 Soft Bell',
             icon: '🔊',
             play: () => {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = getAudioContext();
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -864,7 +874,7 @@
             name: '🎮 Game Show',
             icon: '🔊',
             play: () => {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = getAudioContext();
                 const now = ctx.currentTime;
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -949,18 +959,33 @@
         }
     }
 
-    function getSegmentAtPointer(rotation, numSegments) {
+    function checkBoundaryCrossing(rotation, numSegments, prevRotation) {
         const segmentAngle = 360 / numSegments;
-        // Normalize rotation to 0-360 range, then find which segment is at pointer
-        const normalizedRotation = ((rotation % 360) + 360) % 360;
-        return Math.floor(normalizedRotation / segmentAngle) % numSegments;
-    }
 
-    function checkSegmentCrossing(rotation, numSegments) {
-        const segmentUnderPointer = getSegmentAtPointer(rotation, numSegments);
+        // Normalize rotations to 0-360 range for comparison
+        const normalizeAngle = (angle) => {
+            const mod = angle % 360;
+            return mod < 0 ? mod + 360 : mod;
+        };
 
-        if (segmentUnderPointer !== lastSegmentIndex) {
-            lastSegmentIndex = segmentUnderPointer;
+        const currNormalized = normalizeAngle(rotation);
+        const prevNormalized = normalizeAngle(prevRotation);
+
+        // Calculate which boundary zone we're in
+        // Boundaries are at angles 0, segmentAngle, 2*segmentAngle, etc.
+        const currBoundary = Math.floor(currNormalized / segmentAngle);
+        const prevBoundary = Math.floor(prevNormalized / segmentAngle);
+
+        // Count how many boundaries we've crossed
+        let boundariesToCross = currBoundary - prevBoundary;
+
+        // Handle wrap-around (e.g., going from 355° to 5° crosses the 0°/360° boundary)
+        if (boundariesToCross < 0) {
+            boundariesToCross += numSegments;
+        }
+
+        // Play a tick for each boundary crossed
+        for (let i = 0; i < boundariesToCross; i++) {
             playTickSound();
         }
     }
@@ -1115,9 +1140,7 @@
         const duration   = 12000 + Math.random() * 1000;
         const startTime  = performance.now();
         const startRot   = currentRotation;
-
-        // Reset segment tracking for this spin using same calculation as during spin
-        lastSegmentIndex = getSegmentAtPointer(startRot, n);
+        let prevRot      = startRot;
 
         function tick(now) {
             const t      = Math.min((now - startTime) / duration, 1);
@@ -1127,7 +1150,8 @@
             document.getElementById('wheelSvg').style.transform = `rotate(${currentRot}deg)`;
 
             // Play tick when crossing segment boundaries
-            checkSegmentCrossing(currentRot, n);
+            checkBoundaryCrossing(currentRot, n, prevRot);
+            prevRot = currentRot;
 
             if (t < 1) {
                 requestAnimationFrame(tick);
