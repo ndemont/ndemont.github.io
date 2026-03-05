@@ -133,7 +133,7 @@
 
         /* ── Location Selector ───────────────────── */
         .loc-selector {
-            display: flex; flex-wrap: wrap; gap: 0.5rem;
+            display: none; flex-wrap: wrap; gap: 0.5rem;
             justify-content: center; max-width: 520px;
         }
         .loc-btn {
@@ -149,6 +149,104 @@
             background: linear-gradient(135deg, var(--cyan), var(--purple));
             color: #fff; border-color: transparent;
             box-shadow: 0 4px 16px var(--cyan-glow);
+        }
+
+        /* ── Location Dropdown ──────────────────────── */
+        .loc-dropdown {
+            position: fixed;
+            top: 1rem;
+            right: calc(40px + 2rem);
+            z-index: 99;
+        }
+
+        .loc-trigger {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            border: 1px solid var(--border-hi);
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px var(--cyan-glow);
+        }
+
+        .loc-trigger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--cyan-glow);
+        }
+
+        .loc-trigger.active {
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--red) 100%);
+        }
+
+        .loc-arrow {
+            display: inline-block;
+            font-size: 0.7rem;
+            transition: transform 0.3s ease;
+        }
+
+        .loc-trigger.open .loc-arrow {
+            transform: rotate(180deg);
+        }
+
+        .loc-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 0.5rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border-hi);
+            border-radius: 1rem;
+            padding: 0.75rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 180px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+
+        .loc-dropdown.open .loc-menu {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .loc-menu-item {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            text-align: left;
+        }
+
+        .loc-menu-item:hover {
+            background: var(--surface);
+            color: var(--text);
+            border-color: var(--border-hi);
+        }
+
+        .loc-menu-item.selected {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #fff;
+            border-color: transparent;
         }
 
         /* ── Wheel ───────────────────────────────── */
@@ -352,6 +450,22 @@
     <canvas id="confettiCanvas"></canvas>
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"
             aria-label="Toggle theme">☀️</button>
+
+    <div class="loc-dropdown" id="locDropdown">
+        <button class="loc-trigger" id="locTrigger" onclick="toggleLocDropdown()">
+            <span id="locName">🇩🇪 K11 Berlin</span>
+            <span class="loc-arrow">▼</span>
+        </button>
+        <div class="loc-menu" id="locMenu">
+            <button class="loc-menu-item selected" onclick="selectLocation('k11'); toggleLocDropdown()">🇩🇪 K11 Berlin</button>
+            <button class="loc-menu-item" onclick="selectLocation('m51'); toggleLocDropdown()">🇩🇪 M51 Berlin</button>
+            <button class="loc-menu-item" onclick="selectLocation('levallois'); toggleLocDropdown()">🇫🇷 Levallois</button>
+            <button class="loc-menu-item" onclick="selectLocation('nantes'); toggleLocDropdown()">🇫🇷 Nantes</button>
+            <button class="loc-menu-item" onclick="selectLocation('niort'); toggleLocDropdown()">🇫🇷 Niort</button>
+            <button class="loc-menu-item" onclick="selectLocation('milan'); toggleLocDropdown()">🇮🇹 Milan</button>
+            <button class="loc-menu-item" onclick="selectLocation('amsterdam'); toggleLocDropdown()">🇳🇱 Amsterdam</button>
+        </div>
+    </div>
 
     <div class="page">
         <header class="header">
@@ -633,11 +747,7 @@
     // ── Location selection (async — fetches lazily) ──────────────────────────
     async function selectLocation(key) {
         currentLocation = key;
-
-        // Update button highlights
-        Object.keys(LOCATIONS).forEach(k => {
-            document.getElementById(`btn-${k}`).classList.toggle('active', k === key);
-        });
+        updateLocDisplay(key);
 
         hideResult();
         await ensureRestaurants(key);
@@ -821,6 +931,45 @@
     window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
         if (!getStoredTheme()) {
             setTheme(e.matches ? 'light' : 'dark');
+        }
+    });
+
+    // ── Location Dropdown ────────────────────────────────────────────────────
+    function toggleLocDropdown() {
+        const dropdown = document.getElementById('locDropdown');
+        const trigger = document.getElementById('locTrigger');
+        dropdown.classList.toggle('open');
+        trigger.classList.toggle('open');
+    }
+
+    function updateLocDisplay(key) {
+        const locNames = {
+            k11: '🇩🇪 K11 Berlin',
+            m51: '🇩🇪 M51 Berlin',
+            levallois: '🇫🇷 Levallois',
+            nantes: '🇫🇷 Nantes',
+            niort: '🇫🇷 Niort',
+            milan: '🇮🇹 Milan',
+            amsterdam: '🇳🇱 Amsterdam'
+        };
+
+        document.getElementById('locName').textContent = locNames[key];
+
+        // Update menu selection styles
+        document.querySelectorAll('.loc-menu-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        const locKeys = ['k11', 'm51', 'levallois', 'nantes', 'niort', 'milan', 'amsterdam'];
+        document.querySelectorAll('.loc-menu-item')[locKeys.indexOf(key)].classList.add('selected');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('locDropdown');
+        const trigger = document.getElementById('locTrigger');
+        if (!dropdown.contains(e.target) && dropdown.classList.contains('open')) {
+            dropdown.classList.remove('open');
+            trigger.classList.remove('open');
         }
     });
 
