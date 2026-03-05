@@ -294,7 +294,7 @@
             transition: opacity 0.3s ease;
             z-index: 20;
         }
-        .wheel-loader-ring {
+    .wheel-loader-ring {
             width: 40px; height: 40px;
             border: 2px solid rgba(255,255,255,0.1);
             border-top-color: var(--cyan);
@@ -706,10 +706,15 @@
         }
     }
 
-    function checkSegmentCrossing(rotation, numSegments) {
+    function getSegmentAtPointer(rotation, numSegments) {
         const segmentAngle = 360 / numSegments;
-        // Which segment is currently under the red pointer (at 0°/top)?
-        const segmentUnderPointer = Math.floor((rotation % 360) / segmentAngle) % numSegments;
+        // Normalize rotation to 0-360 range, then find which segment is at pointer
+        const normalizedRotation = ((rotation % 360) + 360) % 360;
+        return Math.floor(normalizedRotation / segmentAngle) % numSegments;
+    }
+
+    function checkSegmentCrossing(rotation, numSegments) {
+        const segmentUnderPointer = getSegmentAtPointer(rotation, numSegments);
 
         if (segmentUnderPointer !== lastSegmentIndex) {
             lastSegmentIndex = segmentUnderPointer;
@@ -868,8 +873,8 @@
         const startTime  = performance.now();
         const startRot   = currentRotation;
 
-        // Reset segment tracking for this spin
-        lastSegmentIndex = Math.floor((startRot % 360) / segAngle);
+        // Reset segment tracking for this spin using same calculation as during spin
+        lastSegmentIndex = getSegmentAtPointer(startRot, n);
 
         function tick(now) {
             const t      = Math.min((now - startTime) / duration, 1);
