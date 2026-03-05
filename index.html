@@ -256,6 +256,7 @@
             width: clamp(290px, 82vw, 440px);
             height: clamp(290px, 82vw, 440px);
         }
+
         .wheel-ring {
             position: absolute; inset: -10px; border-radius: 50%;
             border: 1px solid rgba(34,211,238,0.12);
@@ -277,6 +278,11 @@
             transform-origin: center; transform-box: fill-box;
             filter: drop-shadow(0 20px 60px rgba(0,0,0,0.65));
             will-change: transform;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .wheel-wrap.loaded #wheelSvg {
+            opacity: 1;
         }
 
         /* Wheel inner loading */
@@ -284,6 +290,9 @@
             position: absolute; inset: 0;
             display: flex; align-items: center; justify-content: center;
             pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            z-index: 20;
         }
         .wheel-loader-ring {
             width: 40px; height: 40px;
@@ -291,10 +300,41 @@
             border-top-color: var(--cyan);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            display: none;
+            display: block;
+        }
+        /* Hide loader when wheel is loaded */
+        .wheel-wrap.loaded .wheel-loader {
+            opacity: 0;
+            pointer-events: none;
         }
         .wheel-wrap.fetching .wheel-loader-ring { display: block; }
         .wheel-wrap.fetching #wheelSvg { opacity: 0.3; }
+
+        /* Wheel center - stays fixed, doesn't rotate */
+        .wheel-center {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .wheel-wrap.loaded .wheel-center {
+            opacity: 1;
+        }
+
+        .wheel-center-circle {
+            width: 72px; height: 72px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            line-height: 1;
+        }
 
         /* ── Spin Button ─────────────────────────── */
         .spin-wrap { position: relative; display: inline-block; }
@@ -336,7 +376,7 @@
             border-radius: 1.75rem; padding: 2rem 2.25rem;
             width: 100%; max-width: 400px; text-align: center; position: relative;
             transform: translateY(24px) scale(0.95);
-            transition: transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+            transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
         }
         .modal-backdrop.visible .result-card { transform: translateY(0) scale(1); }
 
@@ -434,8 +474,9 @@
             background: rgba(248,250,252,0.72);
         }
 
-        [data-theme="light"] #wheelSvg circle[r="36"] {
-            fill: #FFFFFF;
+        [data-theme="light"] .wheel-center-circle {
+            background: #FFFFFF;
+            border-color: rgba(0,0,0,0.1);
         }
 
         /* ── Keyframes ───────────────────────────── */
@@ -501,9 +542,10 @@
                     <svg id="wheelSvg" viewBox="-200 -200 400 400">
                         <g id="wheelSegments"></g>
                         <circle cx="0" cy="0" r="193" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="5"/>
-                        <circle cx="0" cy="0" r="36" fill="#111827" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
-                        <text x="0" y="1" text-anchor="middle" dominant-baseline="central" font-size="21" font-family="system-ui">🎡</text>
                     </svg>
+                    <div class="wheel-center">
+                        <div class="wheel-center-circle">🎡</div>
+                    </div>
                 </div>
 
                 <div class="spin-wrap">
@@ -742,6 +784,9 @@
             text.textContent = trunc(r.displayName, maxChars);
             group.appendChild(text);
         });
+
+        // Show wheel after it's loaded
+        document.getElementById('wheelWrap').classList.add('loaded');
     }
 
     // ── Location selection (async — fetches lazily) ──────────────────────────
@@ -779,13 +824,14 @@
         const extraSpins = (Math.floor(Math.random() * 4) + 5) * 360;
         const finalRot   = currentRotation + delta + extraSpins;
 
-        const duration   = 4200 + Math.random() * 800;
+        const duration   = 12000 + Math.random() * 1000;
         const startTime  = performance.now();
         const startRot   = currentRotation;
 
         function tick(now) {
             const t      = Math.min((now - startTime) / duration, 1);
-            const eased  = 1 - Math.pow(1 - t, 4);
+            // Smooth deceleration: fast start → medium → slow → super slow at end
+            const eased  = 1 - Math.pow(1 - t, 6);
             document.getElementById('wheelSvg').style.transform = `rotate(${startRot + (finalRot - startRot) * eased}deg)`;
 
             if (t < 1) {
@@ -809,11 +855,24 @@
         // exists in Google's database. Falls back gracefully to a map centred on the pin.
         const mapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(r.displayName)}/@${r.lat},${r.lng},18z`;
 
+        // Update content
         document.getElementById('resultName').textContent = r.displayName;
         document.getElementById('resultAddr').textContent = r.address;
         document.getElementById('mapsLink').href          = mapsUrl;
-        document.getElementById('resultModal').classList.add('visible');
-        launchConfetti();
+
+        // Show modal and button immediately on next tick
+        const modal = document.getElementById('resultModal');
+        const btn = document.getElementById('spinBtn');
+
+        // Add visible class and re-enable button
+        modal.classList.add('visible');
+        btn.disabled = false;
+
+        // Force reflow to ensure immediate render
+        void modal.offsetHeight;
+
+        // Launch confetti after modal renders
+        setTimeout(launchConfetti, 0);
     }
 
     // ── Confetti ─────────────────────────────────────────────────────────────
