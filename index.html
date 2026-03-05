@@ -1169,10 +1169,9 @@
     function showResult(idx) {
         const r = LOCATIONS[currentLocation].restaurants[idx];
 
-        // /place/NAME/@lat,lng,18z — the format Google Maps itself uses for sharing.
-        // Centres on the exact OSM coordinates and matches the business card if it
-        // exists in Google's database. Falls back gracefully to a map centred on the pin.
-        const mapsUrl = `https://www.google.com/maps/place/${encodeURIComponent(r.displayName)}/@${r.lat},${r.lng},18z`;
+        // Use search format which always shows a pin at coordinates, even if business isn't in Google's index.
+        // This searches for the restaurant name near the coordinates and guarantees a visible pin.
+        const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(r.displayName)}/@${r.lat},${r.lng},18z`;
 
         // Update content
         document.getElementById('resultName').textContent = r.displayName;
