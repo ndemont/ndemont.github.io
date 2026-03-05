@@ -676,6 +676,46 @@
     let isSpinning      = false;
     let currentRotation = 0;
     let fetchingLoc     = null;  // prevents duplicate fetches
+    let lastSegmentIndex = -1;   // track last segment for tick sounds
+
+    // ── Audio - Pinball Wheel Ticks ────────────────────────────────────────────
+    function playTickSound() {
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const now = audioContext.currentTime;
+
+            // Create oscillator for tick sound
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+
+            // Quick pitch sweep for pinball tick effect
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(150, now + 0.05);
+
+            // Quick envelope
+            gain.gain.setValueAtTime(0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } catch (e) {
+            // Audio not supported, silently continue
+        }
+    }
+
+    function checkSegmentCrossing(rotation, numSegments) {
+        const segmentAngle = 360 / numSegments;
+        // Which segment is currently under the red pointer (at 0°/top)?
+        const segmentUnderPointer = Math.floor((rotation % 360) / segmentAngle) % numSegments;
+
+        if (segmentUnderPointer !== lastSegmentIndex) {
+            lastSegmentIndex = segmentUnderPointer;
+            playTickSound();
+        }
+    }
 
     // ── Fetch (lazy, per-location) ────────────────────────────────────────────
     async function ensureRestaurants(key) {
@@ -828,11 +868,18 @@
         const startTime  = performance.now();
         const startRot   = currentRotation;
 
+        // Reset segment tracking for this spin
+        lastSegmentIndex = Math.floor((startRot % 360) / segAngle);
+
         function tick(now) {
             const t      = Math.min((now - startTime) / duration, 1);
             // Smooth deceleration: fast start → medium → slow → super slow at end
             const eased  = 1 - Math.pow(1 - t, 6);
-            document.getElementById('wheelSvg').style.transform = `rotate(${startRot + (finalRot - startRot) * eased}deg)`;
+            const currentRot = startRot + (finalRot - startRot) * eased;
+            document.getElementById('wheelSvg').style.transform = `rotate(${currentRot}deg)`;
+
+            // Play tick when crossing segment boundaries
+            checkSegmentCrossing(currentRot, n);
 
             if (t < 1) {
                 requestAnimationFrame(tick);
