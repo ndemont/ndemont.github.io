@@ -249,6 +249,115 @@
             border-color: transparent;
         }
 
+        /* ── Sound Dropdown ──────────────────────── */
+        .sound-dropdown {
+            position: fixed;
+            top: 1rem;
+            right: calc(200px + 2rem);
+            z-index: 99;
+        }
+
+        .sound-trigger {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            border: 1px solid var(--border-hi);
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 16px var(--cyan-glow);
+        }
+
+        .sound-trigger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--cyan-glow);
+        }
+
+        .sound-trigger.open {
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--purple) 50%, var(--red) 100%);
+        }
+
+        .sound-trigger.muted {
+            background: var(--surface-2);
+            color: var(--muted);
+            border-color: var(--border-hi);
+            box-shadow: none;
+        }
+
+        .sound-trigger.muted:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .sound-arrow {
+            display: inline-block;
+            font-size: 0.7rem;
+            transition: transform 0.3s ease;
+        }
+
+        .sound-trigger.open .sound-arrow {
+            transform: rotate(180deg);
+        }
+
+        .sound-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 0.5rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border-hi);
+            border-radius: 1rem;
+            padding: 0.75rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 180px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(-10px) scale(0.95);
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+
+        .sound-dropdown.open .sound-menu {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .sound-menu-item {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            text-align: left;
+        }
+
+        .sound-menu-item:hover {
+            background: var(--surface);
+            border-color: var(--border-hi);
+        }
+
+        .sound-menu-item.selected {
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            color: #fff;
+            border-color: transparent;
+        }
+
         /* ── Wheel ───────────────────────────────── */
         .wheel-section { display: flex; flex-direction: column; align-items: center; gap: 1.75rem; width: 100%; }
         .wheel-wrap {
@@ -492,6 +601,21 @@
     <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"
             aria-label="Toggle theme">☀️</button>
 
+    <div class="sound-dropdown" id="soundDropdown">
+        <button class="sound-trigger" id="soundTrigger" onclick="toggleSoundDropdown()">
+            <span id="soundIcon">🔊</span>
+            <span id="soundName">Classic Pinball</span>
+            <span class="sound-arrow">▼</span>
+        </button>
+        <div class="sound-menu" id="soundMenu">
+            <button class="sound-menu-item selected" onclick="selectSound('classic'); toggleSoundDropdown()">🎰 Classic Pinball</button>
+            <button class="sound-menu-item" onclick="selectSound('click'); toggleSoundDropdown()">⚙️ Mechanical Click</button>
+            <button class="sound-menu-item" onclick="selectSound('bell'); toggleSoundDropdown()">🔔 Soft Bell</button>
+            <button class="sound-menu-item" onclick="selectSound('gameshow'); toggleSoundDropdown()">🎮 Game Show</button>
+            <button class="sound-menu-item" onclick="selectSound('muted'); toggleSoundDropdown()">🔇 Muted</button>
+        </div>
+    </div>
+
     <div class="loc-dropdown" id="locDropdown">
         <button class="loc-trigger" id="locTrigger" onclick="toggleLocDropdown()">
             <span id="locName">🇩🇪 K11 Berlin</span>
@@ -683,28 +807,143 @@
     let lastSegmentIndex = -1;   // track last segment for tick sounds
 
     // ── Audio - Pinball Wheel Ticks ────────────────────────────────────────────
+    const SOUND_PRESETS = {
+        classic: {
+            name: '🎰 Classic Pinball',
+            icon: '🔊',
+            play: () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(150, now + 0.05);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            }
+        },
+        click: {
+            name: '⚙️ Mechanical Click',
+            icon: '🔊',
+            play: () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(1200, now);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.02);
+                osc.start(now);
+                osc.stop(now + 0.02);
+            }
+        },
+        bell: {
+            name: '🔔 Soft Bell',
+            icon: '🔊',
+            play: () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(800, now);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+        },
+        gameshow: {
+            name: '🎮 Game Show',
+            icon: '🔊',
+            play: () => {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+                osc.start(now);
+                osc.stop(now + 0.04);
+            }
+        },
+        muted: {
+            name: '🔇 Muted',
+            icon: '🔇',
+            play: () => { /* silent */ }
+        }
+    };
+
+    const SOUND_KEY = 'spin-doctor-sound';
+    let currentSoundPreset = 'classic';
+
+    function toggleSoundDropdown() {
+        const dropdown = document.getElementById('soundDropdown');
+        const trigger = document.getElementById('soundTrigger');
+        dropdown.classList.toggle('open');
+        trigger.classList.toggle('open');
+    }
+
+    function selectSound(presetKey) {
+        currentSoundPreset = presetKey;
+        const preset = SOUND_PRESETS[presetKey];
+
+        // Update UI
+        const nameText = preset.name.split(' ').slice(1).join(' ');
+        document.getElementById('soundName').textContent = nameText;
+        document.getElementById('soundIcon').textContent = preset.icon;
+
+        // Update trigger button styling
+        const trigger = document.getElementById('soundTrigger');
+        trigger.classList.remove('muted', 'open');
+        if (presetKey === 'muted') {
+            trigger.classList.add('muted');
+        }
+
+        // Update menu selection
+        document.querySelectorAll('.sound-menu-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        const presetKeys = ['classic', 'click', 'bell', 'gameshow', 'muted'];
+        document.querySelectorAll('.sound-menu-item')[presetKeys.indexOf(presetKey)].classList.add('selected');
+
+        // Save preference
+        localStorage.setItem(SOUND_KEY, presetKey);
+    }
+
+    function initSound() {
+        const stored = localStorage.getItem(SOUND_KEY);
+        if (stored && SOUND_PRESETS[stored]) {
+            selectSound(stored);
+        }
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('soundDropdown');
+        const trigger = document.getElementById('soundTrigger');
+        if (!dropdown.contains(e.target) && dropdown.classList.contains('open')) {
+            dropdown.classList.remove('open');
+            trigger.classList.remove('open');
+        }
+    });
+
     function playTickSound() {
         try {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const now = audioContext.currentTime;
-
-            // Create oscillator for tick sound
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-
-            osc.connect(gain);
-            gain.connect(audioContext.destination);
-
-            // Quick pitch sweep for pinball tick effect
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.exponentialRampToValueAtTime(150, now + 0.05);
-
-            // Quick envelope
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-
-            osc.start(now);
-            osc.stop(now + 0.05);
+            const preset = SOUND_PRESETS[currentSoundPreset];
+            if (preset && preset.play) {
+                preset.play();
+            }
         } catch (e) {
             // Audio not supported, silently continue
         }
@@ -1091,6 +1330,7 @@
     // ── Init ─────────────────────────────────────────────────────────────────
     async function init() {
         initTheme(); // Initialize theme before rendering
+        initSound(); // Initialize sound preference
 
         // Show app shell first (location buttons visible immediately)
         document.getElementById('loading').style.display = 'none';
