@@ -663,7 +663,7 @@
                     <div class="wheel-ring"></div>
                     <div class="pointer"><div class="pointer-arrow"></div></div>
                     <div class="wheel-loader"><div class="wheel-loader-ring"></div></div>
-                    <svg id="wheelSvg" viewBox="-200 -200 400 400">
+                    <svg id="wheelSvg" viewBox="-200 -200 400 400" onclick="forceRefreshRestaurants()" style="cursor: pointer;">
                         <g id="wheelSegments"></g>
                         <circle cx="0" cy="0" r="193" fill="none" stroke="rgba(0,0,0,0.22)" stroke-width="5"/>
                     </svg>
@@ -1001,36 +1001,76 @@
 
         const { lat, lng, city } = loc;
         const d = 0.005; // ~550 m radius
-        // Nodes-only query — simpler, faster, and avoids the `out center` issue with ways
-        const query = `[out:json][timeout:12];node["amenity"="restaurant"](${lat-d},${lng-d},${lat+d},${lng+d});out 20;`;
+
+        // Multiple amenity types to query for better variety
+        const amenityTypes = ['restaurant', 'cafe', 'fast_food', 'pub', 'pizzeria', 'burger'];
+
+        // Slightly offset positions to get variety while staying within radius
+        const offsets = [
+            { lat: 0, lng: 0 },       // Center
+            { lat: 0.002, lng: 0 },    // North
+            { lat: -0.002, lng: 0 },   // South
+            { lat: 0, lng: 0.002 },    // East
+            { lat: 0, lng: -0.002 }    // West
+        ];
 
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 12000);
+        const timer = setTimeout(() => controller.abort(), 15000);
 
         try {
-            const res = await fetch('https://overpass-api.de/api/interpreter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-                signal: controller.signal
-            });
-            clearTimeout(timer);
-            if (!res.ok) throw new Error('HTTP ' + res.status);
+            // Fetch from multiple queries
+            const queries = [];
+            for (const amenity of amenityTypes) {
+                for (const offset of offsets) {
+                    const qLat = lat + offset.lat;
+                    const qLng = lng + offset.lng;
+                    const query = `[out:json][timeout:12];node["amenity"="${amenity}"](${qLat-d},${qLng-d},${qLat+d},${qLng+d});out 10;`;
+                    queries.push(
+                        fetch('https://overpass-api.de/api/interpreter', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: 'data=' + encodeURIComponent(query),
+                            signal: controller.signal
+                        }).then(res => {
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            return res.json();
+                        }).catch(() => ({ elements: [] }))
+                    );
+                }
+            }
 
-            const data = await res.json();
-            const list = data.elements
-                .filter(el => el.tags && el.tags.name && el.lat && el.lon)
-                .map(el => {
+            const results = await Promise.all(queries);
+
+            // Combine all results, deduplicate by location
+            const seen = new Set();
+            const list = [];
+
+            for (const data of results) {
+                if (!data.elements) continue;
+                for (const el of data.elements) {
+                    if (!el.tags || !el.tags.name || !el.lat || !el.lon) continue;
+
+                    // Use location as unique key to avoid duplicates
+                    const key = `${el.lat.toFixed(5)},${el.lon.toFixed(5)}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+
                     const street = el.tags['addr:full'] ||
                         (el.tags['addr:street']
                             ? `${el.tags['addr:street']} ${el.tags['addr:housenumber'] || ''}`.trim()
                             : '');
                     const address = street ? `${street}, ${city}` : city;
-                    return { displayName: el.tags.name, address, lat: el.lat, lng: el.lon };
-                })
-                .slice(0, 12);
+                    list.push({ displayName: el.tags.name, address, lat: el.lat, lng: el.lon });
+                }
+            }
 
-            loc.restaurants = list.length >= 3 ? list : FALLBACKS[key];
+            // Shuffle the list for randomness
+            for (let i = list.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [list[i], list[j]] = [list[j], list[i]];
+            }
+
+            loc.restaurants = list.length >= 3 ? list.slice(0, 12) : FALLBACKS[key];
         } catch {
             clearTimeout(timer);
             loc.restaurants = FALLBACKS[key];
@@ -1109,6 +1149,16 @@
 
         hideResult();
         await ensureRestaurants(key);
+        drawWheel();
+    }
+
+    // ── Force refresh restaurants ────────────────────────────────────────────
+    async function forceRefreshRestaurants() {
+        if (isSpinning) return;
+        const loc = LOCATIONS[currentLocation];
+        loc.restaurants = null;  // Clear cache
+        document.getElementById('wheelWrap').classList.remove('loaded');  // Show loader again
+        await ensureRestaurants(currentLocation);
         drawWheel();
     }
 
